@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:ulkersocialv2/screens/ProfileScreen.dart';
 import 'package:ulkersocialv2/storage/SecureStorage.dart';
 
 class Posts extends StatefulWidget {
@@ -21,16 +23,20 @@ class _PostsState extends State<Posts> {
   void _loadPosts() async {
     final jwt = await secureStorage.read('token');
     final user = await secureStorage.read('user');
+    print("$user");
 
     final postsResponse = await http.get(
-        Uri.parse(
-            "https://ulker-social-backend.tarikadmin35.repl.co/getsubpost"),
+        Uri.parse("https://ulker-social-backend.tarikadmin35.repl.co/allpost"),
         headers: {'Content-Type': 'application/json', 'authorization': "$jwt"});
+
+    print(postsResponse.statusCode);
 
     if (postsResponse.statusCode == 200) {
       final jsonData = json.decode(postsResponse.body) as dynamic;
 
       setState(() {
+        print('data ------> ${jsonData['posts']}');
+
         myId = "$user";
         posts = jsonData['posts'];
         token = "$jwt";
@@ -117,14 +123,31 @@ class _PostsState extends State<Posts> {
         // ! Profile Picture
         Row(
           children: [
-            Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(25),
-                image: DecorationImage(
-                  image: NetworkImage(user['pic']),
-                  fit: BoxFit.cover,
+            InkWell(
+              onTap: () async {
+                /*var result =
+                    await Navigator.of(context).push(CupertinoPageRoute(
+                        builder: (BuildContext context) => ProfileScreen(
+                              user: user,
+                              myId: "userId",
+                            )));
+
+                if (result) {
+                  print("Back to main screen");
+                }*/
+              },
+              child: Hero(
+                tag: user['_id'],
+                child: Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(25),
+                    image: DecorationImage(
+                      image: NetworkImage(user['pic']),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -171,12 +194,14 @@ class _PostsState extends State<Posts> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  post.containsKey('title') ? post['title'] : '',
+                  post?.containsKey('title') ? post['title'] : '',
                   style: TextStyle(fontSize: 14, color: Colors.white),
                 ),
-                SizedBox(height: 5,),
+                SizedBox(
+                  height: 5,
+                ),
                 Text(
-                  post.containsKey('body') ? post['body'] : '',
+                  /*post?.containsKey('body') ? post['body'] : */ '',
                   style: TextStyle(fontSize: 11, color: Colors.white),
                 ),
               ],
@@ -187,11 +212,11 @@ class _PostsState extends State<Posts> {
         // ! Image
         InkWell(
           onDoubleTap: () async {
-            ValueNotifier<int> likesCountNotifier = ValueNotifier<int>(post['likes'].length);
+            ValueNotifier<int> likesCountNotifier =
+                ValueNotifier<int>(post['likes'].length);
             bool isLiked = post['likes'].contains(myId);
-            
-            setState(() {
 
+            setState(() {
               if (isLiked) {
                 // Unlike
                 post['likes'].remove(myId);
@@ -295,8 +320,7 @@ class _PostsState extends State<Posts> {
                         // Like
                         post['likes'].add(myId);
                       }
-                      likesCountNotifier.value =
-                          post['likes'].length;
+                      likesCountNotifier.value = post['likes'].length;
                     });
 
                     if (isLiked) {
@@ -429,10 +453,14 @@ class _PostsState extends State<Posts> {
                   ),
                   onPressed: () async {
                     await http.put(
-                      Uri.parse("https://ulker-social-backend.tarikadmin35.repl.co/comment"),
-                      headers: { 'Content-Type': 'application/json', 'authorization': "$token" },
-                      body: json.encode({ 'postId': post['_id'], 'text': inputValue })
-                    );
+                        Uri.parse(
+                            "https://ulker-social-backend.tarikadmin35.repl.co/comment"),
+                        headers: {
+                          'Content-Type': 'application/json',
+                          'authorization': "$token"
+                        },
+                        body: json.encode(
+                            {'postId': post['_id'], 'text': inputValue}));
 
                     _loadPosts();
                     Navigator.of(context).pop();

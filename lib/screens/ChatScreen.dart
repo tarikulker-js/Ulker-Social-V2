@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:intl/intl.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:ulkersocialv2/storage/SecureStorage.dart';
 
 class ChatScreen extends StatefulWidget {
   @override
@@ -10,7 +11,8 @@ class ChatScreen extends StatefulWidget {
 }
 
 class ChatScreenState extends State<ChatScreen> {
-  final myId = "60708e4ad80a530266eb5a23";
+  final SecureStorage secureStorage = SecureStorage();
+  var myId = "";
   List<Map<String, dynamic>> messages = [];
   TextEditingController messageController = TextEditingController();
   FocusNode _focusNode = FocusNode();
@@ -25,12 +27,15 @@ class ChatScreenState extends State<ChatScreen> {
   }
 
   void loadMessages() async {
+    var userId = await secureStorage.read('user');
+
     final response = await http.get(Uri.parse(
         "https://ulker-social-backend.tarikadmin35.repl.co/get-messages"));
     if (response.statusCode == 200) {
       final jsonData = json.decode(response.body) as List<dynamic>;
-
+      print(userId);
       setState(() {
+        myId = "$userId";
         messages = jsonData.map((message) {
           return {
             "_id": message["_id"],
@@ -120,8 +125,10 @@ class ChatScreenState extends State<ChatScreen> {
         ),
         child: Column(
           children: [
+            Text(myId),
             // ! Messages
             _buildChatMessages(),
+
 
             // ! Send Message Box
             _buildChatSendMessage(),

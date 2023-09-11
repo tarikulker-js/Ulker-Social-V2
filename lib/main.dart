@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:ulkersocialv2/screens/MainScreen.dart';
+import 'package:ulkersocialv2/screens/LoginScreen.dart';
 
 void main() => runApp(MyApp());
 
@@ -25,8 +25,14 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Ulker Social V2',
-      theme: ThemeData( primarySwatch: customColor ),
-      home: MainScreen()
+      theme: ThemeData( 
+        primarySwatch: customColor,
+        textTheme: TextTheme(
+          bodyText1: TextStyle(color: Colors.white),
+        ),
+        scaffoldBackgroundColor: customColor
+      ),
+      home: LoginScreen()
     );
   }
 }

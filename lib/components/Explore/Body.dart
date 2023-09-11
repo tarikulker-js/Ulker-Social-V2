@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:ulkersocialv2/components/Home/Posts.dart';
-import 'package:ulkersocialv2/components/Home/Stories.dart';
+import 'package:ulkersocialv2/components/Explore/Posts.dart';
+import 'package:ulkersocialv2/components/Explore/Stories.dart';
 
-class MainScreenBody extends StatefulWidget {
-  const MainScreenBody({super.key});
+class ExploreScreenBody extends StatefulWidget {
+  const ExploreScreenBody({super.key});
 
   @override
-  State<MainScreenBody> createState() => _MainScreenBodyState();
+  State<ExploreScreenBody> createState() => _ExploreScreenBodyState();
 }
 
-class _MainScreenBodyState extends State<MainScreenBody> {
+class _ExploreScreenBodyState extends State<ExploreScreenBody> {
   bool loading = true;
 
   Function? updateLoading;
@@ -30,16 +30,6 @@ class _MainScreenBodyState extends State<MainScreenBody> {
       onRefresh: _refresh,
       child: CustomScrollView(
         slivers: [
-          SliverToBoxAdapter(
-            child: Stories(
-              loading: loading,
-              updateLoading: (bool newLoading) {
-                setState(() {
-                  loading = newLoading;
-                });
-              },
-            ),
-          ),
           SliverList(
             delegate: SliverChildListDelegate(
               [
