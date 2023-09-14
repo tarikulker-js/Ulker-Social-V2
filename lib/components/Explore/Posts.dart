@@ -1,14 +1,22 @@
 import 'dart:convert';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:ulkersocialv2/screens/ProfileScreen.dart';
+import 'package:ulkersocialv2/components/Explore/CommentModal.dart';
 import 'package:ulkersocialv2/storage/SecureStorage.dart';
 
 class Posts extends StatefulWidget {
   var loading;
+  var page;
   var updateLoading;
-  Posts({Key? key, this.loading, this.updateLoading}) : super(key: key);
+  ScrollController controller;
+
+  Posts(
+      {Key? key,
+      this.loading,
+      this.page,
+      this.updateLoading,
+      required this.controller})
+      : super(key: key);
 
   @override
   State<Posts> createState() => _PostsState();
@@ -19,31 +27,62 @@ class _PostsState extends State<Posts> {
   var posts = [];
   var myId = "";
   var token = "";
+  int take = 5;
+  bool _postsLoaded = false;
+  bool paginationLoading = false;
+  bool endedPosts = false;
 
-  void _loadPosts() async {
+  _loadPosts(skip) async {
+    if (_postsLoaded == false && widget.loading == false || endedPosts) {
+      return;
+    }
+    setState(() {
+      _postsLoaded = false;
+    });
+
+    if (skip == null) {
+      skip = 0;
+    }
+
     final jwt = await secureStorage.read('token');
     final user = await secureStorage.read('user');
-    print("$user");
 
     final postsResponse = await http.get(
-        Uri.parse("https://ulker-social-backend.tarikadmin35.repl.co/allpost"),
+        Uri.parse(
+            "https://ulker-social-backend.tarikadmin35.repl.co/allpost?skip=$skip&take=$take"),
         headers: {'Content-Type': 'application/json', 'authorization': "$jwt"});
-
-    print(postsResponse.statusCode);
 
     if (postsResponse.statusCode == 200) {
       final jsonData = json.decode(postsResponse.body) as dynamic;
 
       setState(() {
-        print('data ------> ${jsonData['posts']}');
-
         myId = "$user";
-        posts = jsonData['posts'];
+        posts.addAll(jsonData['posts']);
         token = "$jwt";
         widget.loading = false;
+        _postsLoaded = true;
+        paginationLoading = false;
+
+        if (jsonData['posts'].length == 0) {
+          endedPosts = true;
+        }
       });
 
       widget.updateLoading!(false);
+    }
+  }
+
+  deletePost(post) async {
+    final response = await http.delete(
+        Uri.parse(
+            "https://ulker-social-backend.tarikadmin35.repl.co/deletepost/${post['_id']}"),
+        headers: {
+          'Content-Type': 'application/json',
+          'authorization': '$token'
+        });
+
+    if (response.statusCode == 200) {
+      widget.updateLoading!(true);
     }
   }
 
@@ -52,14 +91,24 @@ class _PostsState extends State<Posts> {
     super.initState();
 
     if (widget.loading) {
-      _loadPosts();
+      _loadPosts(0);
     }
   }
 
   void didUpdateWidget(Posts oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.loading && !oldWidget.loading) {
-      _loadPosts();
+    if (widget.loading && !oldWidget.loading && !endedPosts) {
+      _loadPosts(0);
+    } else if (widget.page != null && widget.page != oldWidget.page) {
+      setState(() {
+        paginationLoading = true;
+      });
+      WidgetsBinding.instance?.addPostFrameCallback((_) {
+        widget.controller
+            .jumpTo(widget.controller.position.maxScrollExtent - 50);
+      });
+
+      _loadPosts(take * widget.page);
     }
   }
 
@@ -72,17 +121,38 @@ class _PostsState extends State<Posts> {
       );
     } else {
       return Column(
-        children: posts.length == 0
-            ? [
-                Center(
-                  child: const Text("Takip ettiklerinizin bir gönderisi yok.",
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold)),
-                )
-              ]
-            : posts.map((post) => _buildPostItem(post)).toList(),
+        children: [
+          if (posts.length == 0 && !paginationLoading)
+            Center(
+              child: const Text(
+                "Takip ettiklerinizin bir gönderisi yok.",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ...posts.map((post) => _buildPostItem(post)).toList(),
+          if (paginationLoading && !endedPosts)
+            Container(
+              height: 50,
+              width: 50,
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            ),
+          if (endedPosts)
+            Center(
+              child: Text(
+                "Tebrikler, gönderilerin sonuna geldiniz.",
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          SizedBox(
+            height: 150,
+          ),
+        ],
       );
     }
   }
@@ -106,7 +176,7 @@ class _PostsState extends State<Posts> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildPostHeader(user),
+              _buildPostHeader(user, post),
               _buildPostBody(post),
               _buildPostFooter(post, user),
             ],
@@ -116,38 +186,21 @@ class _PostsState extends State<Posts> {
     );
   }
 
-  Widget _buildPostHeader(user) {
+  Widget _buildPostHeader(user, post) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         // ! Profile Picture
         Row(
           children: [
-            InkWell(
-              onTap: () async {
-                /*var result =
-                    await Navigator.of(context).push(CupertinoPageRoute(
-                        builder: (BuildContext context) => ProfileScreen(
-                              user: user,
-                              myId: "userId",
-                            )));
-
-                if (result) {
-                  print("Back to main screen");
-                }*/
-              },
-              child: Hero(
-                tag: user['_id'],
-                child: Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(25),
-                    image: DecorationImage(
-                      image: NetworkImage(user['pic']),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(25),
+                image: DecorationImage(
+                  image: NetworkImage(user['pic']),
+                  fit: BoxFit.cover,
                 ),
               ),
             ),
@@ -171,13 +224,13 @@ class _PostsState extends State<Posts> {
           ],
         ),
 
-        // ! More Button
-        IconButton(
-          icon: Icon(Icons.more_vert),
-          onPressed: () {
-            print("more");
-          },
-        ),
+        // ! Delete Button
+        if (myId == user['_id'])
+          IconButton(
+            icon: Icon(Icons.delete),
+            color: Colors.red,
+            onPressed: () async => deletePost(post),
+          ),
       ],
     );
   }
@@ -194,14 +247,16 @@ class _PostsState extends State<Posts> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  post?.containsKey('title') ? post['title'] : '',
-                  style: TextStyle(fontSize: 14, color: Colors.white),
+                  post['title'] != null
+                      ? post['title'].toString()
+                      : '',
+                  style: TextStyle(fontSize: 11, color: Colors.white),
                 ),
                 SizedBox(
                   height: 5,
                 ),
                 Text(
-                  /*post?.containsKey('body') ? post['body'] : */ '',
+                  post['body'] != null ? post['body'].toString() : '',
                   style: TextStyle(fontSize: 11, color: Colors.white),
                 ),
               ],
@@ -369,155 +424,15 @@ class _PostsState extends State<Posts> {
                 showModalBottomSheet(
                   context: context,
                   builder: (BuildContext context) {
-                    return _buildCommentModal(context, post);
+                    return CommentModal(
+                        loadPosts: _loadPosts, token: token, post: post);
                   },
                 );
               },
-            )
+            ),
           ],
         )
       ],
-    );
-  }
-
-  Container _buildCommentModal(BuildContext context, post) {
-    return Container(
-      color: Colors.black,
-      width: double.infinity,
-      height: MediaQuery.of(context).size.height * 0.75, // Set a fixed height
-      child: Column(
-        children: [
-          _buildCommentModalBody(post),
-          _buildCommentModalFooter(context, post),
-          SizedBox(
-            height: 30,
-          )
-        ],
-      ),
-    );
-  }
-
-  Expanded _buildCommentModalBody(post) {
-    return Expanded(
-      child: ListView.builder(
-        itemCount: post['comments'].length,
-        itemBuilder: (context, index) {
-          return _buildPostComment(post['comments'][index]);
-        },
-      ),
-    );
-  }
-
-  Container _buildCommentModalFooter(BuildContext context, post) {
-    var inputValue = "";
-    return Container(
-      color: Theme.of(context).primaryColor,
-      child: Row(
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 8.0),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Container(
-                width: MediaQuery.of(context).size.width * 0.75,
-                child: TextField(
-                  onChanged: (newValue) {
-                    setState(() {
-                      inputValue = newValue;
-                    });
-                  },
-                  cursorColor: Colors.white,
-                  decoration: new InputDecoration(
-                    enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.white, width: 0.0),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                        borderSide:
-                            BorderSide(color: Colors.white, width: 0.0)),
-                    labelText: "Yorumunuz",
-                    labelStyle: TextStyle(color: Colors.white),
-                  ),
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(left: 0.0),
-            child: Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton(
-                  child: Text("Gönder"),
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.white,
-                  ),
-                  onPressed: () async {
-                    await http.put(
-                        Uri.parse(
-                            "https://ulker-social-backend.tarikadmin35.repl.co/comment"),
-                        headers: {
-                          'Content-Type': 'application/json',
-                          'authorization': "$token"
-                        },
-                        body: json.encode(
-                            {'postId': post['_id'], 'text': inputValue}));
-
-                    _loadPosts();
-                    Navigator.of(context).pop();
-                  },
-                )),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPostComment(comment) {
-    return Container(
-      padding: EdgeInsets.all(8.0),
-      constraints: BoxConstraints(minHeight: 100),
-      decoration: BoxDecoration(),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ! Profile Picture
-          Container(
-            width: 75,
-            height: 75,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(47.5),
-              image: DecorationImage(
-                image: NetworkImage(comment['postedBy']['pic'] ??
-                    "https://static.vecteezy.com/system/resources/previews/008/442/086/original/illustration-of-human-icon-user-symbol-icon-modern-design-on-blank-background-free-vector.jpg"),
-                fit: BoxFit.cover,
-              ),
-            ),
-          ),
-          SizedBox(width: 8.0),
-
-          // User & Comment
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  comment['postedBy']['name'],
-                  style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  comment['text'],
-                  style: TextStyle(fontSize: 12, color: Colors.white),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

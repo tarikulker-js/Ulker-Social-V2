@@ -19,14 +19,19 @@ class _LoginScreenState extends State<LoginScreen> {
   final secureStorage = SecureStorage();
   TextEditingController _emailController = TextEditingController();
   TextEditingController _passwordController = TextEditingController();
+  bool isLoading = false;
 
   void navigateToHome() {
     Navigator.of(context).pushAndRemoveUntil(
-          CupertinoPageRoute(builder: (BuildContext context) => MainScreen()),
-          (router) => false);
+        CupertinoPageRoute(builder: (BuildContext context) => MainScreen()),
+        (router) => false);
   }
 
   void _login() async {
+    setState(() {
+      isLoading = true;
+    });
+
     String email = _emailController.text;
     String password = _passwordController.text;
 
@@ -36,31 +41,40 @@ class _LoginScreenState extends State<LoginScreen> {
       body: json.encode({'email': email, 'password': password}),
     );
 
-    if (response.statusCode == 200) {
+    if (response.statusCode == 200 && json.decode(response.body)["error"] == null) {
       var profileResponse = await http.get(
-        Uri.parse('https://ulker-social-backend.tarikadmin35.repl.co/profile'),
-        headers: { 'Content-Type': 'application/json', 'authorization': '${json.decode(response.body)["token"]}' }
-      );
+          Uri.parse(
+              'https://ulker-social-backend.tarikadmin35.repl.co/profile'),
+          headers: {
+            'Content-Type': 'application/json',
+            'authorization': '${json.decode(response.body)["token"]}'
+          });
 
       await secureStorage.write('token', json.decode(response.body)['token']);
       await secureStorage.write('user', json.decode(response.body)['user']);
-      
-      if (profileResponse.statusCode == 200) {
-        print(profileResponse.body);
 
+      if (profileResponse.statusCode == 200) {
         var user = json.decode(profileResponse.body)['user'];
-        print("saved user ------> ${json.decode(profileResponse.body)['user']}");
+        
         await secureStorage.write('profile', jsonEncode(user));
       }
-      
+
+      setState(() {
+        isLoading = false;
+      });
+
       navigateToHome();
     } else {
       // ! Hatalı giriş durumunu burada işleyebilirsiniz.
+      setState(() {
+        isLoading = false;
+      });
+
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
           title: const Text("Hata"),
-          content: Text("Kullanıcı adı veya şifre yanlış."),
+          content: Text(json.decode(response.body)["error"] != null ? json.decode(response.body)["error"] : "Kullanıcı adı veya şifre yanlış."),
           actions: [
             TextButton(
               onPressed: () {
@@ -75,30 +89,42 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _checkToken() async {
+    setState(() {
+      isLoading = true;
+    });
+
     final token = await secureStorage.read('token');
 
     if (token != null && token.isNotEmpty) {
       final verifyTokenResponse = await http.get(
-        Uri.parse('https://ulker-social-backend.tarikadmin35.repl.co/protected'),
-        headers: {
-          'Content-Type': 'application/json',
-          'authorization': "$token"
-        }
-      );
+          Uri.parse(
+              'https://ulker-social-backend.tarikadmin35.repl.co/protected'),
+          headers: {
+            'Content-Type': 'application/json',
+            'authorization': "$token"
+          });
+
+      setState(() {
+        isLoading = false;
+      });
 
       if (verifyTokenResponse.statusCode != 401) {
         navigateToHome();
       }
+    } else {
+      setState(() {
+        isLoading = false;
+      });
     }
   }
-  
+
   @override
   void initState() {
     super.initState();
-    
+
     _checkToken();
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -106,10 +132,14 @@ class _LoginScreenState extends State<LoginScreen> {
       appBar: MyAppBar(),
       body: Padding(
         padding: EdgeInsets.all(16.0),
-        child: Column(
+        child: isLoading ? Center(
+          child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Colors.white)),
+        ) : Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             TextField(
+              readOnly: isLoading,
+              keyboardType: TextInputType.emailAddress,
               controller: _emailController,
               cursorColor: Colors.white,
               decoration: new InputDecoration(
@@ -126,6 +156,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             SizedBox(height: 32),
             TextField(
+              readOnly: isLoading,
               controller: _passwordController,
               cursorColor: Colors.white,
               decoration: new InputDecoration(
@@ -142,13 +173,16 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             SizedBox(height: 20),
             ElevatedButton(
-              onPressed: _login,
-              child: Text("Giriş Yap"),
+              onPressed: isLoading ? () {} : _login,
+              child: Text(isLoading ? "Yükleniyor" : "Giriş Yap"),
             ),
             Container(
               child: TextButton(
                 onPressed: () {
-                  Navigator.of(context).push(CupertinoPageRoute(builder: (BuildContext context) => RegisterScreen()));
+                  if (isLoading == false) {
+                    Navigator.of(context).push(CupertinoPageRoute(
+                        builder: (BuildContext context) => RegisterScreen()));
+                  }
                 },
                 child: Text("Hesabınız yok mu? Kayıt olun!"),
                 style: TextButton.styleFrom(

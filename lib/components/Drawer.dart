@@ -59,9 +59,20 @@ class _MyDrawerState extends State<MyDrawer> {
                 ),
               ),
             ),
-            ListTile(
-              title: Text("Ana Sayfa"),
-              onTap: () {
+            FloatingActionButton(
+              heroTag: "main",
+              child: ListTile(
+                title: Text("Ana Sayfa"),
+                onTap: () {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    CupertinoPageRoute(
+                      builder: (BuildContext context) => MainScreen(),
+                    ),
+                    (router) => false,
+                  );
+                },
+              ),
+              onPressed: () {
                 Navigator.of(context).pushAndRemoveUntil(
                   CupertinoPageRoute(
                     builder: (BuildContext context) => MainScreen(),
@@ -70,9 +81,20 @@ class _MyDrawerState extends State<MyDrawer> {
                 );
               },
             ),
-            ListTile(
-              title: Text("Keşfet"),
-              onTap: () {
+            FloatingActionButton(
+              heroTag: "explore",
+              child: ListTile(
+                title: Text("Keşfet"),
+                onTap: () {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    CupertinoPageRoute(
+                      builder: (BuildContext context) => ExploreScreen(),
+                    ),
+                    (router) => false,
+                  );
+                },
+              ),
+              onPressed: () {
                 Navigator.of(context).pushAndRemoveUntil(
                   CupertinoPageRoute(
                     builder: (BuildContext context) => ExploreScreen(),
@@ -81,9 +103,23 @@ class _MyDrawerState extends State<MyDrawer> {
                 );
               },
             ),
-            ListTile(
-              title: Text("Çıkış Yap"),
-              onTap: () {
+            FloatingActionButton(
+              heroTag: "logout",
+              child: ListTile(
+                title: Text("Çıkış Yap"),
+                onTap: () {
+                  secureStorage.delete('token');
+                  secureStorage.delete('user');
+
+                  Navigator.of(context).pushAndRemoveUntil(
+                    CupertinoPageRoute(
+                      builder: (BuildContext context) => LoginScreen(),
+                    ),
+                    (router) => false,
+                  );
+                },
+              ),
+              onPressed: () {
                 secureStorage.delete('token');
                 secureStorage.delete('user');
 

@@ -16,6 +16,7 @@ class MainScreen extends StatelessWidget {
       drawer: MyDrawer(),
       body: MainScreenBody(),
       floatingActionButton: FloatingActionButton(
+        heroTag: "createPostMain",
         child: Icon(Icons.add_a_photo),
         onPressed: () => Navigator.of(context).push(CupertinoPageRoute(builder: (BuildContext context) => CreatePostScreen())),
         backgroundColor: Colors.orange,

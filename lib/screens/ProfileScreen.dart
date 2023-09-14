@@ -80,8 +80,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             isFollowing = false;
           });
 
-          print("Unfollow");
-
           var res = await http.put(
               Uri.parse(
                   "https://ulker-social-backend.tarikadmin35.repl.co/unfollow"),
@@ -90,7 +88,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 'authorization': '$token'
               },
               body: json.encode({'followId': widget.user['_id']}));
-        print(res.body);
         } else {
           // ! Follow logic
           setState(() {
@@ -105,7 +102,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 'authorization': '$token'
               },
               body: json.encode({'followId': widget.user['_id']}));
-        print(res.body);
         }
       },
       child: Text(isFollowing ? "Unfollow" : "Follow"),

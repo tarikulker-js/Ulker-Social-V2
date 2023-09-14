@@ -33,7 +33,7 @@ class ChatScreenState extends State<ChatScreen> {
         "https://ulker-social-backend.tarikadmin35.repl.co/get-messages"));
     if (response.statusCode == 200) {
       final jsonData = json.decode(response.body) as List<dynamic>;
-      print(userId);
+      
       setState(() {
         myId = "$userId";
         messages = jsonData.map((message) {
@@ -57,24 +57,55 @@ class ChatScreenState extends State<ChatScreen> {
       throw Exception("Failed to load messages");
     }
 
-    // ! Socket Bağlantı Kurulumu
+    // ! Socket Connection
     socket = IO.io(
         'https://ulker-social-backend.tarikadmin35.repl.co', <String, dynamic>{
       'transports': ['websocket'],
       'autoConnect': true,
     });
 
-    // ! Socket üzerinden mesaj dinleme
+    // ! Socket Listening new messages
     socket.on('message', (data) {
-      print("yeni bir mesaj " + data.toString());
-      final getedAuthor = data['author'];
-      final getedMessage = data['message'];
-      setState(() {
-        messages.add(data);
-      });
-      WidgetsBinding.instance?.addPostFrameCallback((_) {
-        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
-      });
+      if (data != null) {
+        String messageId = data["_id"] is String ? data["_id"] : "";
+        String messageText = data["data"] is Map<String, dynamic>
+            ? (data["data"]["message"] is String ? data["data"]["message"] : "")
+            : "";
+        String authorName = data["author"] is Map<String, dynamic>
+            ? (data["author"]["name"] is String ? data["author"]["name"] : "")
+            : "";
+        DateTime createdAt = data["createdAt"] != null
+            ? (data["createdAt"] is String
+                ? DateTime.parse(data["createdAt"])
+                : DateTime.now())
+            : DateTime.now();
+
+        print("ekleniyor: " +
+            {
+              "_id": messageId,
+              "data": {
+                "message": messageText,
+                "authorName": authorName,
+              },
+              "author": data["author"],
+              "createdAt": createdAt,
+            }.toString());
+
+        setState(() {
+          messages.add({
+            "_id": messageId,
+            "data": {
+              "message": messageText,
+              "authorName": authorName,
+            },
+            "author": data["author"],
+            "createdAt": createdAt,
+          });
+        });
+        WidgetsBinding.instance?.addPostFrameCallback((_) {
+          _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+        });
+      }
     });
   }
 
@@ -85,6 +116,7 @@ class ChatScreenState extends State<ChatScreen> {
     };
     print("gönderilen mesaj " + data.toString());
 
+    // ! Socket sending new message
     socket.emit('message', {'message': messageText, 'author': myId});
 
     WidgetsBinding.instance?.addPostFrameCallback((_) {
@@ -128,7 +160,6 @@ class ChatScreenState extends State<ChatScreen> {
             Text(myId),
             // ! Messages
             _buildChatMessages(),
-
 
             // ! Send Message Box
             _buildChatSendMessage(),
@@ -227,5 +258,4 @@ class ChatScreenState extends State<ChatScreen> {
       ),
     );
   }
-  
 }

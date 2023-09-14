@@ -9,8 +9,16 @@ import 'package:ulkersocialv2/storage/SecureStorage.dart';
 class Stories extends StatefulWidget {
   var loading;
   var updateLoading;
+  var page;
+  var setPage;
 
-  Stories({Key? key, this.loading, this.updateLoading}) : super(key: key);
+  Stories({
+    Key? key,
+    this.loading,
+    this.updateLoading,
+    this.page,
+    this.setPage,
+  }) : super(key: key);
 
   @override
   State<Stories> createState() => _StoriesState();
@@ -21,13 +29,32 @@ class _StoriesState extends State<Stories> {
 
   var users = [];
   var userId = "";
+  int take = 5;
+  bool _usersLoaded = false;
+  bool paginationLoading = false;
+  bool endedUsers = false;
 
-  loadUsers() async {
+  int oldPage = -1;
+  final controller = ScrollController();
+
+  loadUsers(skip) async {
+    if (_usersLoaded == false && widget.loading == false || endedUsers) {
+      return;
+    }
+    setState(() {
+      _usersLoaded = false;
+    });
+
+    if (skip == null) {
+      skip = 0;
+    }
+
     var token = await secureStorage.read('token');
     var user = await secureStorage.read('user');
 
     var usersResponse = await http.get(
-        Uri.parse('https://ulker-social-backend.tarikadmin35.repl.co/users'),
+        Uri.parse(
+            'https://ulker-social-backend.tarikadmin35.repl.co/users?skip=$skip&take=$take'),
         headers: {
           'Content-Type': 'application/json',
           'authorization': '$token'
@@ -35,13 +62,19 @@ class _StoriesState extends State<Stories> {
 
     if (usersResponse.statusCode == 200) {
       var jsonData = json.decode(usersResponse.body);
-
       if (mounted) {
         // Check if the widget is still mounted.
         setState(() {
           userId = "$user";
-          users = jsonData['users'];
+          users.addAll(jsonData['users']);
           widget.loading = false;
+          _usersLoaded = true;
+          paginationLoading = false;
+          oldPage = widget.page;
+
+          if (jsonData['users'].length == 0) {
+            endedUsers = true;
+          }
         });
       }
 
@@ -56,15 +89,34 @@ class _StoriesState extends State<Stories> {
     super.initState();
 
     if (widget.loading) {
-      loadUsers();
+      loadUsers(0);
     }
+
+    controller.addListener(() {
+      if (controller.position.maxScrollExtent == controller.offset) {
+        setState(() {
+          widget.setPage(widget.page + 1);
+        });
+      }
+    });
   }
 
   void didUpdateWidget(Stories oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    if (widget.loading && !oldWidget.loading) {
-      loadUsers();
+    if (widget.loading && !endedUsers) {
+      loadUsers(0);
+    }
+
+    if (widget.loading == false && widget.page != oldPage && !endedUsers) {
+      setState(() {
+        paginationLoading = true;
+      });
+      WidgetsBinding.instance?.addPostFrameCallback((_) {
+        controller.jumpTo(controller.position.maxScrollExtent - 65);
+      });
+
+      loadUsers(take * widget.page);
     }
   }
 
@@ -83,18 +135,37 @@ class _StoriesState extends State<Stories> {
           border: Border(bottom: BorderSide(color: Colors.black, width: 0.2)),
         ),
         child: ListView(
+          controller: controller,
           scrollDirection: Axis.horizontal,
-          children: widget.loading == false && users.length == 0
-              ? [
-                  Center(
-                    child: const Text("Kullanıcı bulunamadı.",
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold)),
-                  )
-                ]
-              : users.map((user) => _buildProfileItem(user)).toList(),
+          children: [
+            if (users.length == 0 && !paginationLoading)
+              Center(
+                child: const Text(
+                  "Kullanıcılar",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ...users.map((user) => _buildProfileItem(user)).toList(),
+            if (paginationLoading && !endedUsers)
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Container(
+                  height: 65,
+                  width: 65,
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 130,
+              ),
+
+          ],
         ),
       );
     }
@@ -151,7 +222,7 @@ class _StoriesState extends State<Stories> {
               Padding(
                 padding: const EdgeInsets.only(top: 4.0),
                 child: Text(
-                  user['name'],
+                  "${user['name']}",
                   style: TextStyle(fontSize: 12, color: Colors.white),
                 ),
               )

@@ -5,8 +5,6 @@ class SecureStorage {
 
   // Veri ekleme
   Future<void> write(String key, String value) async {
-    print(value);
-    print(key);
     await _storage.write(key: key, value: value);
   }
 

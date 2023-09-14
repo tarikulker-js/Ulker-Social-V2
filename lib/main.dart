@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:ulkersocialv2/screens/LoginScreen.dart';
 
-void main() => runApp(MyApp());
+void main() {   
+  runApp(new MyApp());
+}
 
 class MyApp extends StatelessWidget {
   @override

@@ -16,6 +16,7 @@ class ExploreScreen extends StatelessWidget {
       drawer: MyDrawer(),
       body: ExploreScreenBody(),
       floatingActionButton: FloatingActionButton(
+        heroTag: "createPostExplore",
         child: Icon(Icons.add_a_photo),
         onPressed: () => Navigator.of(context).push(CupertinoPageRoute(builder: (BuildContext context) => CreatePostScreen())),
         backgroundColor: Colors.orange,

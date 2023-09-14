@@ -27,16 +27,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     final response = await http.post(
       Uri.parse("https://ulker-social-backend.tarikadmin35.repl.co/signup"),
-      headers: {"Content-Type": "application/json"},
-      body: json.encode({'name': name, 'email': email, 'password': password}),
+        headers: {"Content-Type": "application/json"},
+        body: json.encode({'name': name, 'email': email, 'password': password}),
     );
 
     if (response.statusCode == 200) {
-      print(response.body);
-
       Navigator.of(context).pop();
     } else {
-      print(response.body);
       // ! Hatalı giriş durumunu burada işleyebilirsiniz.
       showDialog(
         context: context,

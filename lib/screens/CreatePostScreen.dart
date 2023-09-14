@@ -1,8 +1,12 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'dart:convert';
 import 'package:dio/dio.dart';
+import 'package:http/http.dart' as http;
+import 'package:ulkersocialv2/screens/MainScreen.dart';
+import 'package:ulkersocialv2/storage/SecureStorage.dart';
 
 class CreatePostScreen extends StatefulWidget {
   @override
@@ -14,8 +18,11 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   String? _selectedImageUrl;
   String? title;
   String? description;
+  bool? loading = false;
 
   final picker = ImagePicker();
+
+  final secureStorage = SecureStorage();
 
   Future<void> uploadImageToCloudinary(File imageFile) async {
     final cloudinaryUrl =
@@ -26,8 +33,6 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       'upload_preset': 'tut_social',
       'cloud_name': 'doaf7ybhd'
     });
-
-    print(formData);
 
     try {
       Response response = await Dio().post(cloudinaryUrl, data: formData);
@@ -48,7 +53,6 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   }
 
   Future<void> _getImageFromGallery() async {
-    print("open gallery");
     final pickedImage = await picker.pickImage(source: ImageSource.gallery);
 
     setState(() {
@@ -56,6 +60,36 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         _selectedImage = File(pickedImage.path);
       }
     });
+  }
+
+  void createPost() async {
+    setState(() {
+      loading = true;
+    });
+
+    var token = await secureStorage.read('token');
+    if (_selectedImage != null) {
+      await uploadImageToCloudinary(_selectedImage!);
+    }
+    
+    final response = await http.post(
+      Uri.parse("https://ulker-social-backend.tarikadmin35.repl.co/createpost"),
+      headers: {"Content-Type": "application/json", 'authorization': '$token'},
+      body: json.encode({
+        'title': title,
+        'body': description,
+        'pic': _selectedImageUrl,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      setState(() {
+        loading = false;
+      });
+      Navigator.of(context).push(CupertinoPageRoute(builder: (BuildContext context) => MainScreen()));
+    } else {
+      print(response.body);
+    }
   }
 
   @override
@@ -73,16 +107,21 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             GestureDetector(
               onTap: _getImageFromGallery,
               child: _selectedImage == null
-                  ? Center(child: Icon(Icons.add_a_photo, size: 50, color: Colors.white,))
+                  ? Center(
+                      child: Icon(
+                      Icons.add_a_photo,
+                      size: 50,
+                      color: Colors.white,
+                    ))
                   : Center(
-                    child: Stack(
+                      child: Stack(
                         alignment: Alignment.bottomRight,
                         children: [
                           Image.file(_selectedImage!, height: 200),
                           Icon(Icons.edit)
                         ],
                       ),
-                  ),
+                    ),
             ),
             SizedBox(height: 16.0),
             TextField(
@@ -97,8 +136,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   borderSide: BorderSide(color: Colors.white, width: 0.0),
                 ),
                 focusedBorder: OutlineInputBorder(
-                    borderSide:
-                        BorderSide(color: Colors.white, width: 0.0)),
+                    borderSide: BorderSide(color: Colors.white, width: 0.0)),
                 labelText: "Başlık",
                 labelStyle: TextStyle(color: Colors.white),
               ),
@@ -118,9 +156,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   borderSide: BorderSide(color: Colors.white, width: 0.0),
                 ),
                 focusedBorder: OutlineInputBorder(
-                borderSide:
-                    BorderSide(color: Colors.white, width: 0.0)),
-                labelText: "Yorumunuz",
+                    borderSide: BorderSide(color: Colors.white, width: 0.0)),
+                labelText: "İçerik",
                 labelStyle: TextStyle(color: Colors.white),
               ),
               style: TextStyle(color: Colors.white),
@@ -129,25 +166,13 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             Container(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () async {
-                  // Post oluşturma işlemleri burada gerçekleştirilebilir.
-            
-                  if (_selectedImage != null) {
-                    await uploadImageToCloudinary(_selectedImage!);
-                  }
-            
-                  print(title);
-                  print(description);
-                  print(_selectedImageUrl);
-                },
+                onPressed: loading == false ? createPost : () {},
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
                 ),
                 child: Text(
-                  'Oluştur',
-                  style: TextStyle(
-                    color: Colors.black
-                  ),
+                  loading == false ? 'Oluştur' : 'Yükleniyor...',
+                  style: TextStyle(color: Colors.black),
                 ),
               ),
             ),
