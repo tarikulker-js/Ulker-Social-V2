@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "ulkersocialv2" "\0"
+            VALUE "FileDescription", "Ulker Social" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "ulkersocialv2" "\0"
+            VALUE "InternalName", "Ulker Social" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2023 com.example. All rights reserved." "\0"
             VALUE "OriginalFilename", "ulkersocialv2.exe" "\0"
-            VALUE "ProductName", "ulkersocialv2" "\0"
+            VALUE "ProductName", "Ulker Social" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Ulker Social V2</string>
+	<string>Ulker Social</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Post yuklemek icin fotograflariniza erismemiz gerekiyor.</string>
 	<key>CFBundleExecutable</key>
@@ -15,7 +15,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>ulkersocialv2</string>
+	<string>Ulker Social</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
