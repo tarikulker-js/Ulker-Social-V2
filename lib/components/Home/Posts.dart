@@ -366,7 +366,7 @@ class _PostsState extends State<Posts> {
           onDoubleTap: () async {
             ValueNotifier<int> likesCountNotifier =
                 ValueNotifier<int>(post['likes'].length);
-            bool isLiked = await containsId(post['likes'], myId, );
+            bool isLiked = containsId(post['likes'], myId, );
 
             setState(() {
               if (isLiked) {

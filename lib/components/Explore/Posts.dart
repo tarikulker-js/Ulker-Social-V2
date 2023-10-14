@@ -34,6 +34,7 @@ class _PostsState extends State<Posts> {
   final SecureStorage secureStorage = SecureStorage();
   var posts = [];
   var myId = "";
+  dynamic myProfile = {};
   var token = "";
   int take = 5;
   int loadCounter = 0;
@@ -65,19 +66,22 @@ class _PostsState extends State<Posts> {
 
     final jwt = await secureStorage.read('token');
     final user = await secureStorage.read('user');
-    
+    final profile = await secureStorage.read('profile');
+
     print("skip: $skip take: $take ");
 
     final postsResponse = await http.get(
-        Uri.parse("https://ulker-social-backend.tarikadmin35.repl.co/allpost?skip=$skip&take=$take"),
+        Uri.parse(
+            "https://ulker-social-backend.tarikadmin35.repl.co/allpost?skip=$skip&take=$take"),
         headers: {'Content-Type': 'application/json', 'authorization': "$jwt"});
-    
+
     if (postsResponse.statusCode == 200) {
       final jsonData = json.decode(postsResponse.body) as dynamic;
-      
+
       if (mounted) {
         setState(() {
           myId = "$user";
+          myProfile = jsonDecode("$profile");
 
           if (addPosts == true) {
             posts.addAll(jsonData['posts']);
@@ -117,6 +121,30 @@ class _PostsState extends State<Posts> {
     }
   }
 
+  bool containsId(dynamic likes, String id) {
+    if (likes.isNotEmpty) {
+      for (var like in likes) {
+        if (like is Map) {
+          if (like.containsKey('_id') && id.isNotEmpty) {
+            if (like['_id'] == id) {
+              return true;
+            }
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  void unlikePost(dynamic likes, String id) {
+    for (int i = 0; i < likes.length; i++) {
+      if (likes[i]['_id'] == id) {
+        likes.removeAt(i);
+        break;
+      }
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -134,7 +162,7 @@ class _PostsState extends State<Posts> {
     if (widget.loading && !oldWidget.loading) {
       print("worked 132");
       setState(() => endedPosts = false);
-      widget.updatePage!(0);
+      //widget.updatePage!(0);
 
       widget.page = 0;
 
@@ -248,7 +276,7 @@ class _PostsState extends State<Posts> {
                     'content-type': "application/json",
                     'authorization': "$token"
                   });
-              
+
               var profile = jsonDecode(profileRes.body)['user'];
               profile['posts'] = jsonDecode(profileRes.body)['posts'];
               print(profile);
@@ -264,8 +292,7 @@ class _PostsState extends State<Posts> {
               });
             } else {
               ToastMessage(
-                  context, "Yükleniyor...", 
-                  "yükleniyor kardeşim az bekle amq",
+                  context, "Yükleniyor...", "yükleniyor kardeşim az bekle amq",
                   type: "error");
             }
           },
@@ -346,15 +373,22 @@ class _PostsState extends State<Posts> {
           onDoubleTap: () async {
             ValueNotifier<int> likesCountNotifier =
                 ValueNotifier<int>(post['likes'].length);
-            bool isLiked = post['likes'].contains(myId);
+            bool isLiked = containsId(
+              post['likes'],
+              myId,
+            );
 
             setState(() {
               if (isLiked) {
-                // Unlike
-                post['likes'].remove(myId);
+                // ! Unlike
+                unlikePost(post['likes'], myId);
               } else {
                 // Like
-                post['likes'].add(myId);
+                post['likes'].add({
+                  "pic": myProfile['pic'],
+                  "name": myProfile['name'],
+                  "_id": myProfile['_id']
+                });
               }
               likesCountNotifier.value =
                   post['likes'].length; // Update likes count
@@ -373,7 +407,11 @@ class _PostsState extends State<Posts> {
 
               if (json.decode(res.body) == null) {
                 setState(() {
-                  post['likes'].add(myId);
+                  post['likes'].add({
+                    "pic": myProfile['pic'],
+                    "name": myProfile['name'],
+                    "_id": myProfile['_id']
+                  });
                   likesCountNotifier.value = post['likes'].length;
                 });
               }
@@ -390,7 +428,7 @@ class _PostsState extends State<Posts> {
 
               if (json.decode(res.body) == null) {
                 setState(() {
-                  post['likes'].remove(myId);
+                  unlikePost(post['likes'], myId);
                   likesCountNotifier.value = post['likes'].length;
                 });
               }
@@ -453,10 +491,8 @@ class _PostsState extends State<Posts> {
                         },
                       );
                     },
-                    child: Text(
-                      "$likesCount Beğenme",
-                      style: TextStyle(color: Colors.white)
-                    ),
+                    child: Text("$likesCount Beğenme",
+                        style: TextStyle(color: Colors.white)),
                   );
                 },
               ),
@@ -469,7 +505,10 @@ class _PostsState extends State<Posts> {
           children: [
             StatefulBuilder(
               builder: (BuildContext context, StateSetter setState) {
-                bool isLiked = post['likes'].contains(myId);
+                bool isLiked = containsId(
+                  post['likes'],
+                  myId,
+                );
 
                 return IconButton(
                   icon: Icon(
@@ -480,10 +519,14 @@ class _PostsState extends State<Posts> {
                     setState(() {
                       if (isLiked) {
                         // Unlike
-                        post['likes'].remove(myId);
+                        unlikePost(post['likes'], myId);
                       } else {
                         // Like
-                        post['likes'].add(myId);
+                        post['likes'].add({
+                          "pic": myProfile['pic'],
+                          "name": myProfile['name'],
+                          "_id": myProfile['_id']
+                        });
                       }
                       likesCountNotifier.value = post['likes'].length;
                     });
@@ -501,7 +544,11 @@ class _PostsState extends State<Posts> {
 
                       if (json.decode(res.body) == null) {
                         setState(() {
-                          post['likes'].add(myId);
+                          post['likes'].add({
+                            "pic": myProfile['pic'],
+                            "name": myProfile['name'],
+                            "_id": myProfile['_id']
+                          });
                           likesCountNotifier.value = post['likes'].length;
                         });
                       }
@@ -518,7 +565,7 @@ class _PostsState extends State<Posts> {
 
                       if (json.decode(res.body) == null) {
                         setState(() {
-                          post['likes'].remove(myId);
+                          unlikePost(post['likes'], myId);
                           likesCountNotifier.value = post['likes'].length;
                         });
                       }
@@ -554,9 +601,8 @@ class _PostsState extends State<Posts> {
             Padding(
               padding: EdgeInsets.only(left: 12.0),
               child: Text(
-                "${formatCreatedAt(DateTime.parse(post['createdAt'])).toString()}",
-                style: TextStyle(color: Colors.white)
-              ),
+                  "${formatCreatedAt(DateTime.parse(post['createdAt'])).toString()} | ${widget.page}",
+                  style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
