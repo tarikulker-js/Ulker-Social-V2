@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:ulkersocialv2/screens/LoginScreen.dart';
+import 'package:intl/intl.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
-void main() {   
+void main() async {
+  await initializeDateFormatting('tr_TR', null);
+
   runApp(new MyApp());
 }
 

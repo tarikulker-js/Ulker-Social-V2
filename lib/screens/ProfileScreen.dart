@@ -2,8 +2,11 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:ulkersocialv2/components/AppBar.dart';
+import 'package:ulkersocialv2/components/LikesModal.dart';
+import 'package:ulkersocialv2/components/ToastMessage.dart';
 import 'package:ulkersocialv2/storage/SecureStorage.dart';
 import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 
 class ProfileScreen extends StatefulWidget {
   final user;
@@ -19,14 +22,30 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final SecureStorage secureStorage = SecureStorage();
   var token = "";
-  bool isFollowing = false;
+  dynamic isFollowing = false;
 
-  bool isFollowingUser(user, myId) {
+  isFollowingUser(user, myId) async {
+    var profile = await secureStorage.read('profile');
+
     var followers = user['followers'];
     if (followers != null && followers.length > 0) {
-      return followers.contains(myId);
+      for (var follower in followers) {
+        if (follower["_id"] == myId) {
+          return true;
+        }
+      }
     } else {
       return false;
+    }
+    return false;
+  }
+
+  void unFollowProfile(dynamic followers, String id) {
+    for (int i = 0; i < followers.length; i++) {
+      if (followers[i]['_id'] == id) {
+        followers.removeAt(i);
+        break;
+      }
     }
   }
 
@@ -38,16 +57,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
   }
 
+  checkIsFollowing() async => await isFollowingUser(widget.user, widget.myId);
+  setIsFollowing() async => isFollowing = await checkIsFollowing();
+
   void initState() {
     super.initState();
+    print(widget.user);
+
     loadToken();
     // isFollowing değişkenini başlangıçta ayarlayın
-    isFollowing = isFollowingUser(widget.user, widget.myId);
+    setIsFollowing();
+
   }
 
   @override
   Widget build(BuildContext context) {
-    bool isFollowing = isFollowingUser(widget.user, widget.myId);
     var posts = widget.user['posts'];
     return Scaffold(
         backgroundColor: Theme.of(context).primaryColor,
@@ -63,7 +87,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _buildProfileSocialCounter(),
 
             // ! Follow Button
-            _buildProfileFollowUnfollowButton(),
+            _buildProfileFollowUnfollowButton(widget.user, widget.myId),
 
             // ! Posts
             _buildProfilePosts(posts)
@@ -71,13 +95,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ));
   }
 
-  Widget _buildProfileFollowUnfollowButton() {
+  Widget _buildProfileFollowUnfollowButton(user, myId) {
     return TextButton(
       onPressed: () async {
+        var myProfile_ = await secureStorage.read('profile');
+        var myProfile = jsonDecode("$myProfile_");
+
         if (isFollowing) {
           // ! Unfollow logic
           setState(() {
             isFollowing = false;
+            
+            if (user['followers'] == null) {
+              user['followers'] = [];
+            }
+
+            unFollowProfile(user['followers'], myId);
           });
 
           var res = await http.put(
@@ -87,11 +120,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 'Content-Type': 'application/json',
                 'authorization': '$token'
               },
-              body: json.encode({'followId': widget.user['_id']}));
+              body: json.encode({'unfollowId': widget.user['_id']}));
+
         } else {
           // ! Follow logic
           setState(() {
             isFollowing = true;
+            
+            if (user['followers'] == null) {
+              user['followers'] = [];
+            }
+            user['followers'].add({ "pic": myProfile['pic'], "name": myProfile['name'], "_id": myProfile['_id'] });
           });
 
           var res = await http.put(
@@ -102,11 +141,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 'authorization': '$token'
               },
               body: json.encode({'followId': widget.user['_id']}));
+          
         }
       },
-      child: Text(isFollowing ? "Unfollow" : "Follow"),
+      child: Text(isFollowing == true ? "Unfollow" : "Follow"),
       style: TextButton.styleFrom(
-        backgroundColor: isFollowing ? Colors.grey : Colors.blue,
+        backgroundColor: isFollowing == true ? Colors.grey : Colors.blue,
       ),
     );
   }
@@ -119,20 +159,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           counter(
-              widget.user['following'] != null
-                  ? widget.user['following'].length.toString()
-                  : "0",
-              "Takip"),
-          counter(
-              widget.user['followers'] != null
-                  ? widget.user['followers'].length.toString()
-                  : "0",
-              "Takipçi"),
-          counter(
               widget.user['posts'] != null
                   ? widget.user['posts'].length.toString()
                   : "0",
               "Post"),
+          InkWell(
+            onTap: () {
+              showModalBottomSheet(
+              context: context,
+              barrierColor: Colors.black12.withOpacity(0.6),
+              barrierLabel: 'Dialog',
+              builder: (_) {
+                return LikesModal(post: { 'likes': widget.user['followers'] }, myId: "myId", token: token, mode: "followersCounter",);
+              },
+            );
+            },
+            child: counter(
+                widget.user['followers'] != null
+                    ? widget.user['followers'].length.toString()
+                    : "0",
+                "Takipçi"),
+          ),
+          InkWell(
+            onTap: () {
+              showModalBottomSheet(
+              context: context,
+              barrierColor: Colors.black12.withOpacity(0.6),
+              barrierLabel: 'Dialog',
+              builder: (_) {
+                return LikesModal(post: { 'likes': widget.user['following'] }, myId: "myId", token: token, mode: "followingCounter",);
+              },
+            );
+            },
+            child: counter(
+                widget.user['following'] != null
+                    ? widget.user['following'].length.toString()
+                    : "0",
+                "Takip"),
+          ),
         ],
       ),
     );
@@ -186,13 +250,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Positioned(
             bottom: 16,
             left: 140,
-            child: Text(
-              widget.user['name'],
-              style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white),
-            )),
+            child: Material(
+              type: MaterialType.transparency,
+              child: Text(
+                "${widget.user['name']} ",
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white),
+              ),
+            )
+        ),
+
+        // ! Web Site
+        Positioned(
+            bottom: 0,
+            left: 140,
+            child: GestureDetector(
+              onTap: () async { 
+                if (!await launchUrl(Uri(
+                  scheme: "mailto",
+                  path: widget.user['email']
+                ))) {
+                  ToastMessage(context, "E-Posta Bulunamadı", "E-Posta bulunamadı.", type: "error");
+                }
+              },
+              child: Text(
+                widget.user['email'],
+                style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white),
+              ),
+            )
+        ),
 
         // ! Back Button
         Container(

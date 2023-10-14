@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:math';
+import 'package:flutter/src/scheduler/binding.dart';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -37,13 +39,16 @@ class _StoriesState extends State<Stories> {
   int oldPage = -1;
   final controller = ScrollController();
 
-  loadUsers(skip) async {
+  loadUsers(skip, addStories) async {
     if (_usersLoaded == false && widget.loading == false || endedUsers) {
       return;
     }
-    setState(() {
-      _usersLoaded = false;
-    });
+    
+    if (mounted) {
+      setState(() {
+        _usersLoaded = false;
+      });
+    }
 
     if (skip == null) {
       skip = 0;
@@ -63,10 +68,15 @@ class _StoriesState extends State<Stories> {
     if (usersResponse.statusCode == 200) {
       var jsonData = json.decode(usersResponse.body);
       if (mounted) {
-        // Check if the widget is still mounted.
         setState(() {
           userId = "$user";
-          users.addAll(jsonData['users']);
+          
+          if (addStories == true) {
+            users.addAll(jsonData['users']);
+          } else {
+            users = jsonData['users'];
+          }
+          
           widget.loading = false;
           _usersLoaded = true;
           paginationLoading = false;
@@ -89,14 +99,18 @@ class _StoriesState extends State<Stories> {
     super.initState();
 
     if (widget.loading) {
-      loadUsers(0);
+      setState(() => {endedUsers = false});
+
+      loadUsers(0, false);
     }
 
     controller.addListener(() {
       if (controller.position.maxScrollExtent == controller.offset) {
-        setState(() {
-          widget.setPage(widget.page + 1);
-        });
+        if (mounted) {
+          setState(() {
+            widget.setPage(widget.page + 1);
+          });
+        }
       }
     });
   }
@@ -105,18 +119,28 @@ class _StoriesState extends State<Stories> {
     super.didUpdateWidget(oldWidget);
 
     if (widget.loading && !endedUsers) {
-      loadUsers(0);
-    }
-
-    if (widget.loading == false && widget.page != oldPage && !endedUsers) {
-      setState(() {
-        paginationLoading = true;
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          if (widget.page != 0) {
+            widget.setPage(0);
+          }
+        }
       });
+
+      
+      print("page sıfırlandı !");
+      loadUsers(0, false);
+    } else if (!widget.loading && widget.page != oldPage) {
+      if (mounted) {
+        setState(() {
+          paginationLoading = true;
+        });
+      } 
       WidgetsBinding.instance?.addPostFrameCallback((_) {
         controller.jumpTo(controller.position.maxScrollExtent - 65);
       });
-
-      loadUsers(take * widget.page);
+      
+      loadUsers(take * widget.page, true);
     }
   }
 
@@ -161,10 +185,9 @@ class _StoriesState extends State<Stories> {
                   ),
                 ),
               ),
-              SizedBox(
-                width: 130,
-              ),
-
+            SizedBox(
+              width: 130,
+            ),
           ],
         ),
       );
@@ -176,15 +199,11 @@ class _StoriesState extends State<Stories> {
       color: Theme.of(context).primaryColor,
       child: InkWell(
         onTap: () async {
-          var result = await Navigator.of(context).push(CupertinoPageRoute(
+          await Navigator.of(context).push(CupertinoPageRoute(
               builder: (BuildContext context) => ProfileScreen(
                     user: user,
                     myId: userId,
                   )));
-
-          if (result) {
-            print("Back to main screen");
-          }
         },
         child: Padding(
           padding: const EdgeInsets.only(left: 8.0),
@@ -194,7 +213,7 @@ class _StoriesState extends State<Stories> {
                 alignment: Alignment.topRight,
                 children: [
                   Hero(
-                    tag: user['_id'],
+                    tag: "${user['_id']}",
                     child: Container(
                       width: 70,
                       height: 70,
@@ -221,9 +240,12 @@ class _StoriesState extends State<Stories> {
               ),
               Padding(
                 padding: const EdgeInsets.only(top: 4.0),
-                child: Text(
-                  "${user['name']}",
-                  style: TextStyle(fontSize: 12, color: Colors.white),
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: Text(
+                    "${user['name']}",
+                    style: TextStyle(fontSize: 12, color: Colors.white),
+                  ),
                 ),
               )
             ],

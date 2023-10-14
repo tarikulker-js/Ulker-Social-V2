@@ -26,6 +26,18 @@ class ChatScreenState extends State<ChatScreen> {
     loadMessages();
   }
 
+  @override
+  void dispose() {
+    myId = "";
+    messages = [];
+    messageController = TextEditingController();
+    _focusNode = FocusNode();
+    _scrollController = ScrollController();
+    isLoading = true;
+
+    super.dispose();
+  }
+
   void loadMessages() async {
     var userId = await secureStorage.read('user');
 
@@ -33,25 +45,29 @@ class ChatScreenState extends State<ChatScreen> {
         "https://ulker-social-backend.tarikadmin35.repl.co/get-messages"));
     if (response.statusCode == 200) {
       final jsonData = json.decode(response.body) as List<dynamic>;
-      
-      setState(() {
-        myId = "$userId";
-        messages = jsonData.map((message) {
-          return {
-            "_id": message["_id"],
-            "data": {
-              "message": message["data"]["message"],
-              "authorName": message["data"]["authorName"],
-            },
-            "author": message["author"],
-            "createdAt": DateTime.parse(message["createdAt"]),
-          };
-        }).toList();
-        isLoading = false;
-      });
+
+      if (mounted) {
+        setState(() {
+          myId = "$userId";
+          messages = jsonData.map((message) {
+            return {
+              "_id": message!["_id"],
+              "data": {
+                "message": message!["data"]!["message"],
+                "authorName": message!["data"]!["authorName"],
+              },
+              "author": message!["author"],
+              "createdAt": DateTime.parse(message!["createdAt"]),
+            };
+          }).toList();
+          isLoading = false;
+        });
+      }
 
       WidgetsBinding.instance?.addPostFrameCallback((_) {
-        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+        if (_scrollController.hasClients) {
+          _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+        }
       });
     } else {
       throw Exception("Failed to load messages");
@@ -80,8 +96,9 @@ class ChatScreenState extends State<ChatScreen> {
                 : DateTime.now())
             : DateTime.now();
 
-        print("ekleniyor: " +
-            {
+        if (mounted) {
+          setState(() {
+            messages.add({
               "_id": messageId,
               "data": {
                 "message": messageText,
@@ -89,21 +106,15 @@ class ChatScreenState extends State<ChatScreen> {
               },
               "author": data["author"],
               "createdAt": createdAt,
-            }.toString());
-
-        setState(() {
-          messages.add({
-            "_id": messageId,
-            "data": {
-              "message": messageText,
-              "authorName": authorName,
-            },
-            "author": data["author"],
-            "createdAt": createdAt,
+            });
           });
-        });
+        }
+        
         WidgetsBinding.instance?.addPostFrameCallback((_) {
-          _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+          if (_scrollController.hasClients) {
+            _scrollController
+                .jumpTo(_scrollController.position.maxScrollExtent);
+          }
         });
       }
     });
@@ -114,7 +125,6 @@ class ChatScreenState extends State<ChatScreen> {
       'message': messageText,
       'author': {"_id": myId}
     };
-    print("gönderilen mesaj " + data.toString());
 
     // ! Socket sending new message
     socket.emit('message', {'message': messageText, 'author': myId});
@@ -137,7 +147,7 @@ class ChatScreenState extends State<ChatScreen> {
     final difference = now.difference(createdAt);
 
     if (difference.inDays > 0) {
-      return DateFormat('d MMM y').format(createdAt);
+      return DateFormat('d MMM y', "tr-TR").format(createdAt);
     } else if (difference.inHours > 0) {
       return '${difference.inHours} saat önce';
     } else if (difference.inMinutes > 0) {

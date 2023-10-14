@@ -1,13 +1,20 @@
 import 'dart:convert';
+import 'package:intl/intl.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:http/http.dart' as http;
-import 'package:ulkersocialv2/components/Explore/CommentModal.dart';
+import 'package:ulkersocialv2/components/CommentModal.dart';
+import 'package:ulkersocialv2/components/LikesModal.dart';
+import 'package:ulkersocialv2/components/ToastMessage.dart';
+import 'package:ulkersocialv2/screens/ProfileScreen.dart';
 import 'package:ulkersocialv2/storage/SecureStorage.dart';
 
 class Posts extends StatefulWidget {
   var loading;
   var page;
   var updateLoading;
+  var updatePage;
   ScrollController controller;
 
   Posts(
@@ -15,6 +22,7 @@ class Posts extends StatefulWidget {
       this.loading,
       this.page,
       this.updateLoading,
+      this.updatePage,
       required this.controller})
       : super(key: key);
 
@@ -28,11 +36,13 @@ class _PostsState extends State<Posts> {
   var myId = "";
   var token = "";
   int take = 5;
+  int loadCounter = 0;
   bool _postsLoaded = false;
   bool paginationLoading = false;
   bool endedPosts = false;
+  bool loadingProfile = false;
 
-  _loadPosts(skip) async {
+  _loadPosts(skip, [bool addPosts = false]) async {
     if (_postsLoaded == false && widget.loading == false || endedPosts) {
       return;
     }
@@ -40,33 +50,52 @@ class _PostsState extends State<Posts> {
       _postsLoaded = false;
     });
 
+    if (loadCounter >= 3) {
+      /*setState(() {
+        posts = [];
+        _postsLoaded=true;
+      });
+      
+      return;*/
+    }
+
     if (skip == null) {
       skip = 0;
     }
 
     final jwt = await secureStorage.read('token');
     final user = await secureStorage.read('user');
+    
+    print("skip: $skip take: $take ");
 
     final postsResponse = await http.get(
-        Uri.parse(
-            "https://ulker-social-backend.tarikadmin35.repl.co/allpost?skip=$skip&take=$take"),
+        Uri.parse("https://ulker-social-backend.tarikadmin35.repl.co/allpost?skip=$skip&take=$take"),
         headers: {'Content-Type': 'application/json', 'authorization': "$jwt"});
-
+    
     if (postsResponse.statusCode == 200) {
       final jsonData = json.decode(postsResponse.body) as dynamic;
+      
+      if (mounted) {
+        setState(() {
+          myId = "$user";
 
-      setState(() {
-        myId = "$user";
-        posts.addAll(jsonData['posts']);
-        token = "$jwt";
-        widget.loading = false;
-        _postsLoaded = true;
-        paginationLoading = false;
+          if (addPosts == true) {
+            posts.addAll(jsonData['posts']);
+          } else {
+            posts = jsonData['posts'];
+          }
 
-        if (jsonData['posts'].length == 0) {
-          endedPosts = true;
-        }
-      });
+          token = "$jwt";
+          widget.loading = false;
+          _postsLoaded = true;
+          paginationLoading = false;
+          loadCounter = loadCounter + 1;
+
+          if (jsonData['posts'].length == 0) {
+            endedPosts = true;
+          }
+        });
+      }
 
       widget.updateLoading!(false);
     }
@@ -82,6 +111,8 @@ class _PostsState extends State<Posts> {
         });
 
     if (response.statusCode == 200) {
+      ToastMessage(context, "Gönderi silindi",
+          "Gönderini başarıyla arabistana yolladın.");
       widget.updateLoading!(true);
     }
   }
@@ -91,24 +122,34 @@ class _PostsState extends State<Posts> {
     super.initState();
 
     if (widget.loading) {
+      print("worked 122");
+      setState(() => endedPosts = false);
+
       _loadPosts(0);
     }
   }
 
   void didUpdateWidget(Posts oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.loading && !oldWidget.loading && !endedPosts) {
+    if (widget.loading && !oldWidget.loading) {
+      print("worked 132");
+      setState(() => endedPosts = false);
+      widget.updatePage!(0);
+
+      widget.page = 0;
+
       _loadPosts(0);
     } else if (widget.page != null && widget.page != oldWidget.page) {
+      print("worked 139 take: $take page: ${widget.page}");
       setState(() {
         paginationLoading = true;
       });
-      WidgetsBinding.instance?.addPostFrameCallback((_) {
-        widget.controller
-            .jumpTo(widget.controller.position.maxScrollExtent - 50);
-      });
+      //WidgetsBinding.instance?.addPostFrameCallback((_) {
+      //  widget.controller
+      //      .jumpTo(widget.controller.position.maxScrollExtent - 50);
+      //});
 
-      _loadPosts(take * widget.page);
+      _loadPosts(take * widget.page, true);
     }
   }
 
@@ -191,37 +232,75 @@ class _PostsState extends State<Posts> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         // ! Profile Picture
-        Row(
-          children: [
-            Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(25),
-                image: DecorationImage(
-                  image: NetworkImage(user['pic']),
-                  fit: BoxFit.cover,
+        GestureDetector(
+          onTap: () async {
+            print("clicked $loadingProfile");
+
+            if (loadingProfile == false) {
+              setState(() {
+                loadingProfile = true;
+              });
+
+              var profileRes = await http.get(
+                  Uri.parse(
+                      "https://ulker-social-backend.tarikadmin35.repl.co/user/${user['_id']}"),
+                  headers: {
+                    'content-type': "application/json",
+                    'authorization': "$token"
+                  });
+              
+              var profile = jsonDecode(profileRes.body)['user'];
+              profile['posts'] = jsonDecode(profileRes.body)['posts'];
+              print(profile);
+
+              await Navigator.of(context).push(CupertinoPageRoute(
+                  builder: (BuildContext context) => ProfileScreen(
+                        user: profile,
+                        myId: myId,
+                      )));
+
+              setState(() {
+                loadingProfile = false;
+              });
+            } else {
+              ToastMessage(
+                  context, "Yükleniyor...", 
+                  "yükleniyor kardeşim az bekle amq",
+                  type: "error");
+            }
+          },
+          child: Row(
+            children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(25),
+                  image: DecorationImage(
+                    image: NetworkImage(user['pic']),
+                    fit: BoxFit.cover,
+                  ),
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(left: 10.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // ! User Name
-                  Text(
-                    user['name'],
-                    style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white),
-                  ),
-                  // ! Post Created At
-                ],
+              Padding(
+                padding: const EdgeInsets.only(left: 10.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ! User Name
+                    Text(
+                      user['name'],
+                      style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white),
+                    ),
+                    // ! Post Created At
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
 
         // ! Delete Button
@@ -247,9 +326,7 @@ class _PostsState extends State<Posts> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  post['title'] != null
-                      ? post['title'].toString()
-                      : '',
+                  post['post'] != null ? post['post'].toString() : '',
                   style: TextStyle(fontSize: 11, color: Colors.white),
                 ),
                 SizedBox(
@@ -332,6 +409,21 @@ class _PostsState extends State<Posts> {
     );
   }
 
+  String formatCreatedAt(DateTime createdAt) {
+    final now = DateTime.now();
+    final difference = now.difference(createdAt);
+
+    if (difference.inDays > 0) {
+      return DateFormat('d MMM y', "tr-TR").format(createdAt);
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours} saat önce';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes} dakika önce';
+    } else {
+      return 'şimdi';
+    }
+  }
+
   Widget _buildPostFooter(post, user) {
     ValueNotifier<int> likesCountNotifier =
         ValueNotifier<int>(post['likes'].length);
@@ -346,8 +438,26 @@ class _PostsState extends State<Posts> {
               child: ValueListenableBuilder<int>(
                 valueListenable: likesCountNotifier,
                 builder: (context, likesCount, child) {
-                  return Text("$likesCount Likes",
-                      style: TextStyle(color: Colors.white));
+                  return InkWell(
+                    onTap: () {
+                      showModalBottomSheet(
+                        context: context,
+                        barrierColor: Colors.black12.withOpacity(0.6),
+                        barrierLabel: 'Dialog',
+                        builder: (_) {
+                          return LikesModal(
+                            post: post,
+                            myId: myId,
+                            token: token,
+                          );
+                        },
+                      );
+                    },
+                    child: Text(
+                      "$likesCount Beğenme",
+                      style: TextStyle(color: Colors.white)
+                    ),
+                  );
                 },
               ),
             ),
@@ -423,15 +533,33 @@ class _PostsState extends State<Posts> {
               onPressed: () {
                 showModalBottomSheet(
                   context: context,
-                  builder: (BuildContext context) {
+                  barrierColor: Colors.black12.withOpacity(0.6),
+                  barrierLabel: 'Dialog',
+                  builder: (_) {
                     return CommentModal(
-                        loadPosts: _loadPosts, token: token, post: post);
+                        user: user,
+                        loadPosts: _loadPosts,
+                        token: token,
+                        post: post);
                   },
                 );
               },
             ),
           ],
-        )
+        ),
+
+        Row(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            Padding(
+              padding: EdgeInsets.only(left: 12.0),
+              child: Text(
+                "${formatCreatedAt(DateTime.parse(post['createdAt'])).toString()}",
+                style: TextStyle(color: Colors.white)
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }

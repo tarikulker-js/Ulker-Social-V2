@@ -51,12 +51,12 @@ class _MyDrawerState extends State<MyDrawer> {
               accountName: Text("${profile['name']}"),
               accountEmail: Text("${profile['email']}"),
               currentAccountPicture: Container(
-                decoration: BoxDecoration(
+                decoration: profile.containsKey('pic') ? BoxDecoration(
                   borderRadius: BorderRadius.circular(50),
                   image: DecorationImage(
                       image: NetworkImage("${profile['pic']}"),
                       fit: BoxFit.cover),
-                ),
+                ) : null,
               ),
             ),
             FloatingActionButton(

@@ -5,7 +5,9 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:http/http.dart' as http;
-import 'package:ulkersocialv2/screens/MainScreen.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:ulkersocialv2/components/ToastMessage.dart';
+import 'package:ulkersocialv2/screens/ExploreScreen.dart';
 import 'package:ulkersocialv2/storage/SecureStorage.dart';
 
 class CreatePostScreen extends StatefulWidget {
@@ -60,35 +62,68 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         _selectedImage = File(pickedImage.path);
       }
     });
+    /*bool hasPermission = await Permission.photos.isGranted;
+    print(hasPermission);
+
+    if (hasPermission) {
+      final pickedImage = await picker.pickImage(source: ImageSource.gallery);
+
+      setState(() {
+        if (pickedImage != null) {
+          _selectedImage = File(pickedImage.path);
+        }
+      });
+    } else {
+      await Permission.photos.request();
+    }*/
+  }
+
+  checkTexts(text) {
+    if (text != null) {
+      final arabicCharacters = RegExp(r'[\u0600-\u06FF]+');
+
+      return arabicCharacters.hasMatch(text);
+    } else
+      return false;
   }
 
   void createPost() async {
-    setState(() {
-      loading = true;
-    });
-
-    var token = await secureStorage.read('token');
-    if (_selectedImage != null) {
-      await uploadImageToCloudinary(_selectedImage!);
-    }
-    
-    final response = await http.post(
-      Uri.parse("https://ulker-social-backend.tarikadmin35.repl.co/createpost"),
-      headers: {"Content-Type": "application/json", 'authorization': '$token'},
-      body: json.encode({
-        'title': title,
-        'body': description,
-        'pic': _selectedImageUrl,
-      }),
-    );
-
-    if (response.statusCode == 200) {
-      setState(() {
-        loading = false;
-      });
-      Navigator.of(context).push(CupertinoPageRoute(builder: (BuildContext context) => MainScreen()));
+    if (checkTexts(title) || checkTexts(description)) {
+      ToastMessage(context, "Yallah arabistana", "Araplar giremez, yallah arabistana.");
+      return;
     } else {
-      print(response.body);
+      setState(() {
+        loading = true;
+      });
+
+      var token = await secureStorage.read('token');
+      if (_selectedImage != null) {
+        await uploadImageToCloudinary(_selectedImage!);
+      }
+
+      final response = await http.post(
+        Uri.parse(
+            "https://ulker-social-backend.tarikadmin35.repl.co/createpost"),
+        headers: {
+          "Content-Type": "application/json",
+          'authorization': '$token'
+        },
+        body: json.encode({
+          'title': title,
+          'body': description,
+          'pic': _selectedImageUrl,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        setState(() {
+          loading = false;
+        });
+        Navigator.of(context).push(CupertinoPageRoute(
+            builder: (BuildContext context) => ExploreScreen()));
+      } else {
+        print(response.body);
+      }
     }
   }
 

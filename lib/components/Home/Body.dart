@@ -11,18 +11,19 @@ class MainScreenBody extends StatefulWidget {
 
 class _MainScreenBodyState extends State<MainScreenBody> {
   bool loading = true;
-  int page = 1;
-  int storiesPage = 1;
+  int page = 0;
+  int storiesPage = 0;
   final controller = ScrollController();
   Function? updateLoading;
 
   Future<void> _refresh() async {
     setState(() {
       loading = true;
+      page = 0;
     });
 
     if (updateLoading != null) {
-      updateLoading!(false);
+      updateLoading!(true);
     }
   }
 
@@ -60,12 +61,15 @@ class _MainScreenBodyState extends State<MainScreenBody> {
               updateLoading: (bool newLoading) {
                 setState(() {
                   loading = newLoading;
+                  page = 0;
                 });
               },
               setPage: (int newPage) {
-                setState(() {
-                  storiesPage = newPage;
-                });
+                if (mounted) {
+                  setState(() {
+                    storiesPage = newPage;
+                  });
+                }
               },
               page: storiesPage,
             ),
@@ -81,6 +85,7 @@ class _MainScreenBodyState extends State<MainScreenBody> {
                   updateLoading: (bool newLoading) {
                     setState(() {
                       loading = newLoading;
+                      page = 0;
                     });
                   },
                 ),
