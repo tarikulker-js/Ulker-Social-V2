@@ -21,9 +21,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   String? title;
   String? description;
   bool? loading = false;
+  ImageSource source = ImageSource.gallery;
 
   final picker = ImagePicker();
-
   final secureStorage = SecureStorage();
 
   Future<void> uploadImageToCloudinary(File imageFile) async {
@@ -55,10 +55,10 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   }
 
   Future<void> _getImageFromGallery() async {
-    final pickedImage = await picker.pickImage(source: ImageSource.gallery);
-
+    final pickedImage = await picker.pickImage(source: source);
     setState(() {
       if (pickedImage != null) {
+        print(pickedImage.path);
         _selectedImage = File(pickedImage.path);
       }
     });
@@ -140,7 +140,35 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             GestureDetector(
-              onTap: _getImageFromGallery,
+              onTap: () {
+                showCupertinoModalPopup(
+                  context: context,
+                  builder: (context) => CupertinoActionSheet(
+                    actions: [
+                      CupertinoActionSheetAction(
+                        onPressed: () {
+                          setState(() {
+                            source = ImageSource.camera;
+                          });
+
+                          _getImageFromGallery();
+                        }, 
+                        child: Text("Kamera")
+                      ),
+                      CupertinoActionSheetAction(
+                        onPressed: () {
+                          setState(() {
+                            source = ImageSource.gallery;
+                          });
+
+                          _getImageFromGallery();
+                        }, 
+                        child: Text("Galeri")
+                      ),
+                    ],
+                  ),
+                );
+              },
               child: _selectedImage == null
                   ? Center(
                       child: Icon(

@@ -6,13 +6,14 @@ import 'package:http/http.dart' as http;
 import 'package:ulkersocialv2/storage/SecureStorage.dart';
 
 class CommentModal extends StatefulWidget {
-  final Function loadPosts;
+  final loadPosts;
   final String token;
   final user;
   final profile;
   final post;
+  final reelsMode;
 
-  CommentModal({required this.loadPosts, required this.token, required this.post, this.user, this.profile});
+  CommentModal({required this.loadPosts, required this.token, required this.post, this.user, this.profile, this.reelsMode});
 
   @override
   _CommentModalState createState() => _CommentModalState();
@@ -155,20 +156,38 @@ class _CommentModalState extends State<CommentModal> {
                                       profile = jsonProfile;
                                     });
                                   }
-    
-                                  await http.put(
-                                    Uri.parse(
-                                        "https://ulker-social-backend.tarikadmin35.repl.co/comment"),
+                                  var uri = Uri.parse("https://ulker-social-backend.tarikadmin35.repl.co/comment");
+
+                                  if (widget.reelsMode != null) {
+                                    if (widget.reelsMode) {
+                                      uri = Uri.parse("https://ulker-social-backend.tarikadmin35.repl.co/reel/comment");
+                                    }
+                                  }
+
+                                  var body = {
+                                    'text': inputValue
+                                  };
+
+                                  if (widget.reelsMode != null && widget.reelsMode == true) {
+                                    body['reelId'] = widget.post['_id'];
+                                  } else {
+                                    body['postId'] = widget.post['_id'];
+
+                                  }
+
+                                  var res = await http.put(
+                                    uri,
                                     headers: {
                                       'Content-Type': 'application/json',
-                                      'authorization': "${widget.token}"
+                                      'Authorization': "${widget.token}"
                                     },
-                                    body: json.encode({
-                                      'postId': widget.post['_id'],
-                                      'text': inputValue
-                                    }),
+                                    body: json.encode(body),
                                   );
-    
+
+                                  print(uri);
+                                  print(body);
+                                  print(res.body);
+                                  
                                   //widget.loadPosts(0, false);
     
                                   setState(() {
@@ -177,7 +196,8 @@ class _CommentModalState extends State<CommentModal> {
                                       "text": inputValue,
                                       "postedBy": {
                                         "_id": "${widget.user}",
-                                        "name": "${profile['name']}"
+                                        "name": "${profile['name']}",
+                                        "pic": "${profile['pic']}",
                                       }
                                     });
                                   });
@@ -186,7 +206,7 @@ class _CommentModalState extends State<CommentModal> {
                                   
                                   //Navigator.of(context).pop();
                                 } catch (e) {
-                                  print(e);
+                                  print("Error: $e");
                                   //Navigator.of(context).pop();
                                 } finally {
                                   setState(() {

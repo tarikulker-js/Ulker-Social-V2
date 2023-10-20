@@ -2,8 +2,11 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:internet_connection_checker/internet_connection_checker.dart';
 import 'package:ulkersocialv2/components/AppBar.dart';
-import 'package:ulkersocialv2/components/Drawer.dart';
+import 'package:ulkersocialv2/components/ToastMessage.dart';
+import 'package:ulkersocialv2/screens/CreatePostScreen.dart';
+import 'package:ulkersocialv2/screens/CreateReelsScreen.dart';
 import 'package:ulkersocialv2/screens/MainScreen.dart';
 import 'package:ulkersocialv2/screens/RegisterScreen.dart';
 import 'package:ulkersocialv2/storage/SecureStorage.dart';
@@ -122,7 +125,15 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
 
-    _checkToken();
+    _checkInternet();
+  }
+
+  _checkInternet() async {
+    if (await InternetConnectionChecker().hasConnection) {
+      _checkToken();
+    } else {
+      ToastMessage(context, "Internet Bağlantınız yok!", "Lütfen internete bağlandıktan sonra tekrar deneyin!");
+    }
   }
 
   @override

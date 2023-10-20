@@ -5,8 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:ulkersocialv2/screens/ExploreScreen.dart';
 import 'package:ulkersocialv2/screens/LoginScreen.dart';
 import 'package:ulkersocialv2/screens/MainScreen.dart';
+import 'package:ulkersocialv2/screens/ReelsScreen.dart';
 import 'package:ulkersocialv2/storage/SecureStorage.dart';
-import 'package:http/http.dart' as http;
 
 class MyDrawer extends StatefulWidget {
   MyDrawer({super.key});
@@ -72,14 +72,7 @@ class _MyDrawerState extends State<MyDrawer> {
                   );
                 },
               ),
-              onPressed: () {
-                Navigator.of(context).pushAndRemoveUntil(
-                  CupertinoPageRoute(
-                    builder: (BuildContext context) => MainScreen(),
-                  ),
-                  (router) => false,
-                );
-              },
+              onPressed: () {},
             ),
             FloatingActionButton(
               heroTag: "explore",
@@ -94,14 +87,21 @@ class _MyDrawerState extends State<MyDrawer> {
                   );
                 },
               ),
-              onPressed: () {
-                Navigator.of(context).pushAndRemoveUntil(
-                  CupertinoPageRoute(
-                    builder: (BuildContext context) => ExploreScreen(),
-                  ),
-                  (router) => false,
-                );
-              },
+              onPressed: () {},
+            ),
+            FloatingActionButton(
+              heroTag: "reels",
+              child: ListTile(
+                title: Text("Reels"),
+                onTap: () {
+                  Navigator.of(context).push(
+                    CupertinoPageRoute(
+                      builder: (BuildContext context) => ReelsScreen(),
+                    ),
+                  );
+                },
+              ),
+              onPressed: () {},
             ),
             FloatingActionButton(
               heroTag: "logout",
@@ -119,17 +119,7 @@ class _MyDrawerState extends State<MyDrawer> {
                   );
                 },
               ),
-              onPressed: () {
-                secureStorage.delete('token');
-                secureStorage.delete('user');
-
-                Navigator.of(context).pushAndRemoveUntil(
-                  CupertinoPageRoute(
-                    builder: (BuildContext context) => LoginScreen(),
-                  ),
-                  (router) => false,
-                );
-              },
+              onPressed: () {},
             ),
           ],
         ));

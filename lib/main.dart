@@ -37,6 +37,12 @@ class MyApp extends StatelessWidget {
         textTheme: TextTheme(
           bodyText1: TextStyle(color: Colors.white),
         ),
+        canvasColor: Colors.black,
+        colorScheme: Theme.of(context).colorScheme.copyWith(
+          primary: Colors.black,
+          background: Colors.red,
+          secondary: Colors.black,
+        ),
         scaffoldBackgroundColor: customColor
       ),
       home: LoginScreen()

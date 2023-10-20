@@ -30,6 +30,7 @@ class Posts extends StatefulWidget {
 
 class _PostsState extends State<Posts> {
   final SecureStorage secureStorage = SecureStorage();
+  TransformationController imageController = TransformationController();
   var posts = [];
   var myId = "";
   dynamic myProfile = {};
@@ -419,10 +420,19 @@ class _PostsState extends State<Posts> {
           },
           child: Center(
             child: post.containsKey('picture') && post['picture'] != null
-                ? Image.network(
-                    post['picture'],
-                    height: MediaQuery.of(context).size.height * 0.5,
-                  )
+                ? InteractiveViewer(
+                  transformationController: imageController,
+                  panEnabled: false,
+                  minScale: 1,
+                  maxScale: 4,
+                  onInteractionEnd: (details){
+                    imageController.value = Matrix4.identity();
+                  },
+                  child: Image.network(
+                      post['picture'],
+                      height: MediaQuery.of(context).size.height * 0.5,
+                    ),
+                )
                 : Text("Resim yok"), // Eğer "picture" yoksa bir metin göster
           ),
         ),

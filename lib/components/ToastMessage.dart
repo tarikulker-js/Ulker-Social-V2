@@ -1,32 +1,39 @@
 import 'package:flutter/material.dart';
 
-void ToastMessage(BuildContext context, String title, String description, {String type = "success"}) {
-  ScaffoldMessenger.of(context).showSnackBar(
+void ToastMessage(BuildContext toastMessageContext, String title, String description, {String type = "success", bool action = true}) {
+  ScaffoldMessenger.of(toastMessageContext).showSnackBar(
     SnackBar(
-      content: Row(
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          type == "error" ? Icon(Icons.error_outline_outlined) : Icon(Icons.check_circle_outline_outlined),
-          SizedBox(
-            width: 15,
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Row(
             children: [
+              type == "error" ? Icon(Icons.error_outline_outlined, color: Colors.white, size: 25) : Icon(Icons.check_circle_outline_outlined, color: Colors.white, size: 25),
+              SizedBox(
+                width: 15,
+              ),
               Text(
                 title,
                 style: TextStyle(
                   fontSize: 18,
                   color: Colors.white,
                 ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
-              Text(
-                description,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.white,
-                ),
-              )
             ],
+          ),
+          Padding(
+            padding: const EdgeInsets.only(left: 40),
+            child: Text(
+              description,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.white,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
           )
         ],
       ),
@@ -35,12 +42,12 @@ void ToastMessage(BuildContext context, String title, String description, {Strin
         borderRadius: BorderRadius.circular(10),
       ),
       behavior: SnackBarBehavior.floating,
-      action: SnackBarAction(
+      action: action ? SnackBarAction(
         label: 'X',
         onPressed: () {
-          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          ScaffoldMessenger.of(toastMessageContext).hideCurrentSnackBar();
         },
-      ),
+      ) : null,
     ),
   );
 }

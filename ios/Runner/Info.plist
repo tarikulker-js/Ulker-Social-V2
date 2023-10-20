@@ -18,6 +18,11 @@
 	<string>Ulker Social</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+	<key>NSAllowsArbitraryLoads</key>
+	<true/>
+	</dict>
 	<key>CFBundleShortVersionString</key>
 	<string>$(FLUTTER_BUILD_NAME)</string>
 	<key>CFBundleSignature</key>
@@ -27,7 +32,11 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Post yuklemek icin fotograflariniza erismemiz gerekiyor.</string>
+	<string>Gönderi ve Reels yüklemek adına Ulker Social'ın Galeri erişimine ihtiyacı vardır.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Gönderi ve Reels yüklemek adına Ulker Social'ın Kamera erişimine ihtiyacı vardır.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Gönderi ve Reels yüklemek adına Ulker Social'ın Mikrofon erişimine ihtiyacı vardır.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
